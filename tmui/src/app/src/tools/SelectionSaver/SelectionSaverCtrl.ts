@@ -11,25 +11,28 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-interface SaveSelectionScope extends ToolWindowContentScope {
-    randomForest: ClassificationCtrl;
+interface SelectionSaverScope extends ToolWindowContentScope {
+    randomForest: SelectionSaverCtrl;
+    featureWidget: FeatureSelectionWidgetCtrl;
     mapobjectTypeWidget: MapobjectTypeWidgetCtrl;
     classSelectionWidget: ClassSelectionWidgetCtrl;
 }
 
-class SaveSelectionCtrl extends ToolCtrl {
+class SelectionSaverCtrl extends ToolCtrl {
     static $inject = ['$scope', 'viewer'];
 
     method: string = 'randomforest';
     nCrossvalidations: number = 5;
 
-    constructor(public $scope: SaveSelectionScope,
+    constructor(public $scope: SelectionSaverScope,
                 public viewer: Viewer) {
         super();
     }
 
     doClassify() {
         // Build the request object
+        var selectedFeatures = this.$scope.featureWidget.selectedFeatures;
+
         var trainingClasses = [];
         this.$scope.classSelectionWidget.classes.forEach((cls) => {
             trainingClasses.push({
