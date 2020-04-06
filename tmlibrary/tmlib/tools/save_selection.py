@@ -1,5 +1,5 @@
 # TmLibrary - TissueMAPS library for distibuted image analysis routines.
-# Copyright (C) 2016-2020 University of Zurich.
+# Copyright (C) 2016-2018 University of Zurich.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 import logging
-import pandas as pd
 
 import tmlib.models as tm
 from tmlib.utils import same_docstring_as
@@ -32,8 +31,12 @@ class SelectionSaver(Classifier):
     __icon__ = 'LB'
 
     __description__ = (
-        'Saves the currently provided selection by the user in the interface'
+        'Classifies mapobjects based on the values of selected features and '
+        'labels provided by the user.'
     )
+
+    # TODO: Ensure that all options are available for all libraries.
+    __options__ = {'method': ['randomforest', 'svm'], 'n_fold_cv': 10}
 
     @same_docstring_as(Tool.__init__)
     def __init__(self, experiment_id):
@@ -46,7 +49,7 @@ class SelectionSaver(Classifier):
 
             {
                 "choosen_object_type": str,
-                "name": str,
+                "selected_features": [str, ...],
                 "training_classes": [
                     {
                         "name": str,
@@ -54,7 +57,12 @@ class SelectionSaver(Classifier):
                         "color": str
                     },
                     ...
-                ]
+                ],
+                "options": {
+                    "method": str,
+                    "n_fold_cv": int
+                }
+
             }
 
         Parameters
@@ -64,11 +72,14 @@ class SelectionSaver(Classifier):
         payload: dict
             description of the tool job
         '''
-        logger.info('Save current selections')
+        logger.info('perform supervised classification')
         mapobject_type_name = payload['chosen_object_type']
-        # TODO: Make the name entered in the interface appear as the name of the saved selection
-        # Also deal with potential name duplications here
-        # name = payload['name']
+        feature_names = payload['selected_features']
+        method = payload['options']['method']
+        n_fold_cv = payload['options']['n_fold_cv']
+
+        if method not in self.__options__['method']:
+            raise ValueError('Unknown method "%s".' % method)
 
         labels = dict()
         label_map = dict()
@@ -79,33 +90,27 @@ class SelectionSaver(Classifier):
         unique_labels = np.unique(labels.values())
         result_id = self.register_result(
             submission_id, mapobject_type_name,
-            result_type='SavedSelectionsToolResult',
+            result_type='SupervisedClassifierToolResult',
             unique_labels=unique_labels, label_map=label_map
         )
-        
-        # TODO: Create a "predicted labels" kind of pandas.Series for the labels.keys()
-        # keys are mapobject ids, values are the actual labels
-        # mapobject ids should be indices of the pandas Series afterwards
-        label_series = pd.DataFrame().from_dict(labels, orient='index').squeeze()
-        logger.info("Created a results series of type {}".format(type(label_series)))
-        
-        self.save_result_values(
-            mapobject_type_name, result_id, label_series
+
+        training_set = self.load_feature_values(
+            mapobject_type_name, feature_names, labels.keys()
         )
-        
-        # logger.info('train classifier')
-        # model, scaler = self.train_supervised(
-        #     training_set, labels, method, n_fold_cv
-        # )
+        logger.info('train classifier')
+        model, scaler = self.train_supervised(
+            training_set, labels, method, n_fold_cv
+        )
 
-
-        # batches = self.partition_mapobjects(mapobject_type_name, n_test)
-        # for i, mapobject_ids in enumerate(batches):
-        #     logger.info('predict labels for batch #%d', i)
-        #     test_set = self.load_feature_values(
-        #         mapobject_type_name, feature_names, mapobject_ids
-        #     )
-        #     predicted_labels = self.predict(test_set, model, scaler)
-        #     self.save_result_values(
-        #         mapobject_type_name, result_id, predicted_labels
-        #     )
+        n_test = 10**5
+        logger.debug('set batch size to %d', n_test)
+        batches = self.partition_mapobjects(mapobject_type_name, n_test)
+        for i, mapobject_ids in enumerate(batches):
+            logger.info('predict labels for batch #%d', i)
+            test_set = self.load_feature_values(
+                mapobject_type_name, feature_names, mapobject_ids
+            )
+            predicted_labels = self.predict(test_set, model, scaler)
+            self.save_result_values(
+                mapobject_type_name, result_id, predicted_labels
+            )
