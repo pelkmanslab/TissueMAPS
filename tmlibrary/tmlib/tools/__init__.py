@@ -72,6 +72,7 @@ from tmlib.version import __version__
 from tmlib.tools.classification import Classification
 from tmlib.tools.clustering import Clustering
 from tmlib.tools.heatmap import Heatmap
+from tmlib.tools.save_selection import SelectionSaver
 from tmlib.tools.base import _register
 
 logger = logging.getLogger(__name__)
