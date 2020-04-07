@@ -23,6 +23,7 @@ angular.module('tmaps.ui').controller('ToolWindowCtrl', ToolWindowCtrl);
 
 angular.module('tmaps.ui')
 .directive('tmToolWindow', () => {
+    console.log('Got into tmToolWindow');
     return {
         templateUrl: '/src/viewer/toolui/toolwindow/tool-window.html',
         controller: 'ToolWindowCtrl',
@@ -68,10 +69,16 @@ angular.module('tmaps.ui')
                 var templateUrl = newSession.tool.templateUrl;
                 $templateRequest(templateUrl).then(function(resp) {
                     var newScope = scope.$new();
+                    console.log('Attempting to get the controller in tmToolWindow.ts');
+                    console.log(scope.viewer);
+                    console.log(newScope);
+                    console.log(scope);
+                    console.log(newSession.tool.controller);
                     var toolCtrl = $controller(newSession.tool.controller, {
                         'viewer': scope.viewer,
                         '$scope': newScope
                     });
+                    console.log('Successfully got the controller in tmToolWindow.ts');
                     toolCtrl.sendRequest = function(payload) {
                         return scope.viewer.sendToolRequest(newSession, payload);
                     }.bind(toolCtrl);

@@ -108,4 +108,5 @@ def get_available_tools():
         names of available tools
     '''
     logger.debug('get available tools')
+    logger.debug(_register.keys())
     return _register.keys()

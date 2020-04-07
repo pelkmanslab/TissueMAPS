@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 interface SelectionSaverScope extends ToolWindowContentScope {
-    randomForest: SelectionSaverCtrl;
     featureWidget: FeatureSelectionWidgetCtrl;
     mapobjectTypeWidget: MapobjectTypeWidgetCtrl;
     classSelectionWidget: ClassSelectionWidgetCtrl;
@@ -28,7 +27,7 @@ class SelectionSaverCtrl extends ToolCtrl {
                 public viewer: Viewer) {
         super();
     }
-
+    
     doClassify() {
         // Build the request object
         var selectedFeatures = this.$scope.featureWidget.selectedFeatures;

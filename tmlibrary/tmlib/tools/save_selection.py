@@ -90,7 +90,7 @@ class SelectionSaver(Classifier):
         unique_labels = np.unique(labels.values())
         result_id = self.register_result(
             submission_id, mapobject_type_name,
-            result_type='SupervisedClassifierToolResult',
+            result_type='SavedSelectionsToolResult',
             unique_labels=unique_labels, label_map=label_map
         )
 

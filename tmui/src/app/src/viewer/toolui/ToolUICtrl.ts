@@ -35,6 +35,8 @@ class ToolUICtrl {
         var doShowWindow = !isSessionDefined || isSessionDefined && this.showWindow === false;
 
         if (doShowWindow) {
+            console.log(tool);
+            console.log(this.$scope)
             this.currentTool = tool;
             if (tool.sessions.length == 0) {
                 this.currentSession = tool.createSession();

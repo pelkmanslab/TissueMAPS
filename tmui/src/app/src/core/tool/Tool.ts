@@ -74,7 +74,7 @@ class Tool {
         this.icon = args.icon;
         this.methods = args.methods;
     }
-
+    
     /**
      * Get the controller that should be instantiated when
      * creating opening a window of this tool.
@@ -85,6 +85,8 @@ class Tool {
      * @returns {ToolCtrl} An instance of a subclass of ToolCtrl.
      */
     get controller() {
+        console.log('Getting the controller');
+        console.log(this.name);
         return window[this.name + 'Ctrl'];
     }
 

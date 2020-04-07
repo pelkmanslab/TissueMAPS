@@ -38,6 +38,7 @@ class ToolbarCtrl {
      * This function is called when the Tool's button is pressed.
      */
     clickToolTab(tool: Tool) {
+        console.log(this.$scope);
         this.$scope.toolUICtrl.toggleToolWindow(tool);
     }
 }
