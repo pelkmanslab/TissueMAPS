@@ -1,4 +1,4 @@
-# Copyright (C) 2017 University of Zurich.
+# Copyright 2017 Scott Berry, University of Zurich
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import logging
 import numpy as np
 import pandas as pd
 
-VERSION = '0.0.4'
+VERSION = '0.0.6'
 
 Output = collections.namedtuple('Output', ['measurements', 'figure'])
 
@@ -30,7 +30,7 @@ class Morphology3D(jtlib.features.Features):
     and surface area of segmented objects.
     '''
 
-    def __init__(self, label_image, intensity_image, pixel_size, z_step):
+    def __init__(self, label_image, intensity_image, pixel_size, z_step, compute_surface_area):
         '''
         Parameters
         ----------
@@ -44,6 +44,7 @@ class Morphology3D(jtlib.features.Features):
         super(Morphology3D, self).__init__(label_image, intensity_image)
         self.pixel_size = pixel_size
         self.z_step = z_step
+        self.compute_surface_area = compute_surface_area
 
     @property
     def _feature_names(self):
@@ -100,13 +101,17 @@ class Morphology3D(jtlib.features.Features):
             img = self.get_object_intensity_image(obj)
 
             # Set all non-object pixels to NaN
-            img_nan = img.astype(np.float)
+            # Divide volume image values by 100.0 to get height in z-slices
+            img_nan = img.astype(np.float) / 100.0
             img_nan[~mask] = np.nan
 
             # Calculate region properties and upper surface area
             region = self.object_properties[obj]
             lower_surface_area = region.area * self.pixel_size * self.pixel_size
-            upper_surface_area = self.upper_surface_area(img_nan)
+            if self.compute_surface_area:
+                upper_surface_area = self.upper_surface_area(img_nan)
+            else:
+                upper_surface_area = np.nan
             values = [
                 region.max_intensity * self.z_step,
                 region.mean_intensity * self.z_step,
@@ -122,7 +127,7 @@ class Morphology3D(jtlib.features.Features):
 
 
 def main(extract_objects, assign_objects, intensity_image,
-         pixel_size=0.1625, z_step=0.25, plot=False):
+         pixel_size=0.1625, z_step=0.25, surface_area=False, plot=False):
     '''Measures 3D morphology features for objects in `extract_objects`
     based on grayscale values in `intensity_image` and assigns them to
     `assign_objects`.
@@ -141,6 +146,8 @@ def main(extract_objects, assign_objects, intensity_image,
     z_step: float
         distance between consecutive z-planes in micrometres (default
         ``0.25``)
+    surface_area: bool, optional
+        whether upper surface area should be computed (default: ``False``)
     plot: bool, optional
         whether a plot should be generated (default: ``False``)
 
@@ -158,6 +165,7 @@ def main(extract_objects, assign_objects, intensity_image,
         intensity_image=intensity_image,
         pixel_size=pixel_size,
         z_step=z_step,
+        compute_surface_area=surface_area
     )
 
     f.check_assignment(assign_objects, aggregate=False)

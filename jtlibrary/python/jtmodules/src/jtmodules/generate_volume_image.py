@@ -1,4 +1,4 @@
-# Copyright (C) 2017 University of Zurich.
+# Copyright 2017 Scott Berry, University of Zurich
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,30 +15,51 @@
 import collections
 import logging
 import numpy as np
-from jtlib.segmentation import detect_blobs
+import mahotas as mh
+from jtlib.filter import log_2d, log_3d
 
 logger = logging.getLogger(__name__)
 
-VERSION = '0.1.0'
+VERSION = '0.5.0'
 
-Output = collections.namedtuple('Output', ['volume_image', 'figure'])
+Output = collections.namedtuple(
+    'Output', ['volume_image', 'smoothed_surface_image', 'bead_coordinate_image', 'slide_surface_image', 'figure']
+)
+Beads = collections.namedtuple('Beads', ['coordinates', 'coordinate_image'])
 
 
-def array_to_coordinate_list(array):
+class InvalidSlideError(ValueError):
+    '''Raised when the slide surface is computed from a biased
+    set of points'''
+
+
+def array_to_coordinate_list(array, offset=[0,0]):
     '''Convert a 2D array representation of points in 3D
     to a list of x,y,z coordinates'''
-    points = []
-    for ix in range(array.shape[0]):
-        for iy in range(array.shape[1]):
-            if (array[ix, iy] > 0):
-                points.append((ix, iy, array[ix, iy]))
-    return points
+    nonzero = np.nonzero(array)
+    coordinates = np.vstack([
+        np.stack([nonzero[0] + offset[0], nonzero[1] + offset[1]]),
+        array[nonzero]
+    ]).T
+    return list(map(tuple, coordinates))
+
+
+def coordinate_list_to_array(coordinates, shape, dtype=np.uint16):
+    '''Convert a list of x,y,z coordinates to a 2D array
+    representation of points in 3D'''
+    image = np.zeros(shape, dtype=dtype)
+    for i in range(len(coordinates)):
+        image[coordinates[i][0], coordinates[i][1]] = coordinates[i][2]
+    return image.astype(dtype=dtype)
 
 
 def subsample_coordinate_list(points, num):
-    subpoints = np.array(points)[np.linspace(
-        start=0, stop=len(points), endpoint=False,
-        num=num, dtype=np.uint32)]
+    if len(points) > num:
+        subpoints = np.array(points)[np.linspace(
+            start=0, stop=len(points), endpoint=False,
+            num=num, dtype=np.uint32)]
+    else:
+        subpoints = points
     return list(map(tuple, subpoints))
 
 
@@ -49,7 +70,54 @@ def plane(x, y, params):
     return z
 
 
-# Least squares error estimate
+def slide_surface_params(slide):
+    '''Determine the parameters (a,b,c) for the equation of the slide
+    surface in 3D (z = ax + bx + c), given a coordinate image of the
+    slide'''
+
+    # Sample evenly from image quadrants
+    m, n = np.floor(np.array(slide.shape) / 2.0).astype(np.int)
+    ul, ur = slide[:m,:n], slide[m:,:n]
+    ll, lr = slide[:m,n:], slide[m:,n:]
+
+    ul_coords = array_to_coordinate_list(ul, offset=[0,0])
+    ur_coords = array_to_coordinate_list(ur, offset=[m,0])
+    ll_coords = array_to_coordinate_list(ll, offset=[0,n])
+    lr_coords = array_to_coordinate_list(lr, offset=[m,n])
+
+    lim = 200
+    ul_n = len(ul_coords)
+    ur_n = len(ur_coords)
+    ll_n = len(ll_coords)
+    lr_n = len(lr_coords)
+
+    logger.debug('number of beads on slide surface in each quadrant' +
+                 ' is %d, %d, %d, %d', ul_n, ur_n, ll_n, lr_n)
+    if ((ur_n < lim and ll_n < lim and lr_n < lim) or
+        (ul_n < lim and ll_n < lim and lr_n < lim) or
+        (ul_n < lim and ur_n < lim and lr_n < lim) or
+        (ul_n < lim and ur_n < lim and ll_n < lim)):
+        raise InvalidSlideError('slide surface determined primarily' +
+                                ' from one quadrant.')
+
+    if ul_n < lim or ur_n < lim or ll_n < lim or lr_n < lim:
+        logger.warn('one or more quadrants has < %d' +
+                    ' points on slide surface,' +
+                    ' upper-left = %d,' +
+                    ' upper-right = %d,' +
+                    ' lower-left = %d,' +
+                    ' lower-right = %d',
+                    lim, ul_n, ur_n, ll_n, lr_n)
+
+    coordinates = (subsample_coordinate_list(ul_coords, 500) +
+                   subsample_coordinate_list(ur_coords, 500) +
+                   subsample_coordinate_list(ll_coords, 500) +
+                   subsample_coordinate_list(lr_coords, 500))
+
+    surface = fit_plane(coordinates)
+    return surface
+
+
 def squared_error(params, points):
     '''Compute the sum of squared residuals'''
     result = 0
@@ -66,50 +134,8 @@ def fit_plane(points):
     import functools
 
     fun = functools.partial(squared_error, points=points)
-    params0 = [0, 0, 0]
+    params0 = [0.0, 0.0, 0.0]
     return scipy.optimize.minimize(fun, params0)
-
-
-def locate_in_3D(image, mask, bin_size=1, surface_plane_params=[0, 0, 0]):
-    '''From a 2D array ``mask``, find the brightest
-    corresponding point in 3D ``image``'''
-
-    def rebin(arr, new_shape):
-        '''Rebin 2D array arr to shape new_shape by averaging.'''
-        shape = (new_shape[0], arr.shape[0] // new_shape[0],
-                 new_shape[1], arr.shape[1] // new_shape[1])
-        return arr.reshape(shape).mean(-1).mean(1)
-
-    if bin_size > 1:
-        image_binned = np.zeros(
-            (image.shape[0] / 2, image.shape[1] / 2, image.shape[2]),
-            dtype=np.uint16
-        )
-        for iz in range(image_binned.shape[2]):
-            image_binned[:, :, iz] = rebin(
-                image[:, :, iz],
-                np.shape(image_binned[:, :, iz])
-            )
-    else:
-        image_binned = image
-
-    x, y, z = [], [], []
-    for ix in range(image.shape[0]):
-        for iy in range(image.shape[1]):
-            if mask[ix, iy] > 0:
-                max_pos = np.argmax(
-                    image_binned[int(ix / bin_size), int(iy / bin_size), :]
-                )
-                height = int(
-                    max_pos - plane(ix, iy, surface_plane_params)
-                )
-                if height > 0:
-                    x.append(ix)
-                    y.append(iy)
-                    z.append(height)
-
-    coords = collections.namedtuple("coords", ["x", "y", "z"])
-    return coords(x=x, y=y, z=z)
 
 
 def interpolate_surface(coords, output_shape, method='linear'):
@@ -117,29 +143,209 @@ def interpolate_surface(coords, output_shape, method='linear'):
     interpolation is returned as a numpy array'''
     from scipy.interpolate import griddata
 
-    xy = np.column_stack((coords.x, coords.y))
+    coords = coords.astype(np.float32)
+
+    xy = np.column_stack((coords[:, 0], coords[:, 1]))
     xv, yv = np.meshgrid(
         range(output_shape[0]),
         range(output_shape[1])
     )
     if method == 'nearest':
         interpolate = griddata(
-            xy, np.array(coords.z), (xv, yv), method='nearest', rescale=False
+            xy, np.array(coords[:, 2]), (xv, yv), method='nearest', rescale=False
         )
     elif method == 'cubic':
         interpolate = griddata(
-            xy, np.array(coords.z), (xv, yv), method='cubic', rescale=False
+            xy, np.array(coords[:, 2]), (xv, yv), method='cubic', rescale=False
         )
     elif method == 'linear':
         interpolate = griddata(
-            xy, np.array(coords.z), (xv, yv), method='linear', rescale=False
+            xy, np.array(coords[:, 2]), (xv, yv), method='linear', rescale=False
         )
 
     return interpolate.T
 
 
-def main(image, mask, threshold=150, bead_size=2, superpixel_size=4,
-         close_surface=False, close_disc_size=8, plot=False):
+def localise_bead_maxima_3D(image, labeled_beads, minimum_bead_intensity):
+    '''Given a 3D image of beads, and a 3D segmentation image,
+    bead maxima are returned as a numpy array'''
+
+    logger.debug('removing beads with intensity < %d', minimum_bead_intensity)
+    bead_coords = []
+    bboxes = mh.labeled.bbox(labeled_beads)
+    for bead in range(np.max(labeled_beads)):
+        x_min, x_max, y_min, y_max, z_min, z_max = bboxes[bead]
+        label_image = labeled_beads[x_min:x_max, y_min:y_max, z_min:z_max]
+        bounded = image[x_min:x_max, y_min:y_max, z_min:z_max]
+        bounded = np.copy(bounded)
+        bounded[label_image != bead] = 0
+        local_coords = np.unravel_index(
+            bounded.argmax(),
+            bounded.shape
+        )
+        bbox_min = (x_min, y_min, z_min)
+        centre = tuple(a + b for a, b in zip(bbox_min, local_coords))
+
+        if (image[centre[0], centre[1], centre[2]] > minimum_bead_intensity):
+            bead_coords.append(centre)
+
+    logger.debug('convert %d bead vertices to image', len(bead_coords))
+    coord_image = coordinate_list_to_array(bead_coords, image[:,:,0].shape)
+
+    return Beads(bead_coords, coord_image)
+
+
+def filter_vertices_per_cell_alpha_shape(coord_image_abs, mask, alpha, z_step, pixel_size):
+    '''Vertices are filtered based on whether their coordinates form a
+    likely part of a cell. This step is for rejection of spatial outliers'''
+    import alpha_shape
+    import random
+
+    logger.debug('filtering vertices with alpha = %d,' +
+                 ' z_step = %0.4f, pixel_size = %0.4f',
+                 alpha, z_step, pixel_size)
+    n_cells = np.max(mask)
+    bboxes = mh.labeled.bbox(mask)
+    conversion_factor = 2.0 * z_step / pixel_size
+
+    def z_steps_to_abs(z):
+        return float(conversion_factor * z)
+
+    def abs_to_z_steps(z):
+        return int(round(z / conversion_factor))
+
+    filtered_coords_global = []
+    if alpha > 0:
+        for cell in range(1, n_cells + 1):
+            x_min, x_max, y_min, y_max = bboxes[cell]
+            cell_isolated = np.copy(coord_image_abs[x_min:x_max, y_min:y_max])
+            label_image_isolated = np.copy(mask[x_min:x_max, y_min:y_max])
+
+            cell_isolated[label_image_isolated != cell] = 0
+            label_image_isolated[label_image_isolated != cell] = 0
+            border_isolated = mh.labeled.bwperim(label_image_isolated, n=4)
+
+            cell_isolated_coords = array_to_coordinate_list(
+                cell_isolated
+            )
+            border_isolated_coords = array_to_coordinate_list(
+                border_isolated.astype(np.float32)
+            )
+
+            # set border coordinates to zero-height.
+            border_isolated_coords_zeroed = [(x, y, 0.0) for (x,y,z) in border_isolated_coords]
+
+            # get coordinates from cell surface
+            all_coords_local = cell_isolated_coords + border_isolated_coords_zeroed
+
+            # convert to absolute positions for z-coordinate
+            all_coords_local = [(x, y, z_steps_to_abs(z)) for (x, y, z) in all_coords_local]
+
+            # filter vertices based on alpha_shape
+            filtered_coords = alpha_shape.filter_vertices(
+                all_coords_local, alpha
+            )
+
+            # convert back from absolute positions to integer number of z-steps
+            filtered_coords = [(x, y, abs_to_z_steps(z)) for (x, y, z) in filtered_coords]
+
+            # transform to global coords and add border coordinates
+            n_border_coordinates = 100
+            try:
+                s = random.sample(set(border_isolated_coords_zeroed), n_border_coordinates)
+            except ValueError:
+                s = set(border_isolated_coords_zeroed)
+
+            logger.debug(
+                '%d bead vertices inside cell, adding %d border coordinates',
+                len(filtered_coords),
+                len(s),
+            )
+
+            filtered_coords_global += [(t[0] + x_min, t[1] + y_min, t[2]) for t in set(filtered_coords).union(s)]
+
+    else:
+        filtered_coords_global = array_to_coordinate_list(coord_image_abs)
+
+    return filtered_coords_global
+
+
+def smooth_surface(coordinate_image, mask,
+                   output_shape, z_step,
+                   pixel_size, smooth=0.5):
+    '''For surface area calculations, it is necessary to smooth the
+    volume image, this is done on a per-cell basis to reduce memory
+    requirements. A list of filtered coordinates is used to fit a
+    multiquadric surface'''
+    from scipy.interpolate import Rbf
+
+    logger.debug('generating smoothed image with smooth = %0.4f,' +
+                 ' z_step = %0.4f, pixel_size = %0.4f',
+                 smooth, z_step, pixel_size)
+    n_cells = np.max(mask)
+    bboxes = mh.labeled.bbox(mask)
+    conversion_factor = z_step / pixel_size
+    smoothed_image_float = np.zeros(shape=output_shape, dtype=np.float32)
+
+    def z_steps_to_abs(z):
+        return float(conversion_factor * z)
+
+    def abs_to_z_steps(z):
+        return int(round(z / conversion_factor))
+
+    for cell in range(1, n_cells + 1):
+        x_min, x_max, y_min, y_max = bboxes[cell]
+        cell_isolated = np.copy(coordinate_image[x_min:x_max, y_min:y_max])
+        label_image_isolated = np.copy(mask[x_min:x_max, y_min:y_max])
+
+        cell_isolated[label_image_isolated != cell] = 0
+        label_image_isolated[label_image_isolated != cell] = 0
+        border_isolated = mh.labeled.bwperim(label_image_isolated, n=4)
+
+        cell_isolated_coords = array_to_coordinate_list(
+            cell_isolated
+        )
+        border_isolated_coords = array_to_coordinate_list(
+            border_isolated.astype(np.float32)
+        )
+
+        # set border coordinates to zero-height.
+        border_isolated_coords_zeroed = [(x, y, 0.0) for (x,y,z) in border_isolated_coords]
+
+        # get coordinates from cell surface
+        all_coords_local = cell_isolated_coords + border_isolated_coords_zeroed
+
+        # convert to absolute positions for z-coordinate
+        all_coords_local = [(x, y, z_steps_to_abs(z)) for (x, y, z) in all_coords_local]
+
+        # generate smoothed surface
+        XI, YI = np.meshgrid(
+            np.arange(start=0, stop=cell_isolated.shape[1], step=1),
+            np.arange(start=0, stop=cell_isolated.shape[0], step=1)
+        )
+
+        XYZ = np.array(all_coords_local)
+        rbf = Rbf(XYZ[:,1], XYZ[:,0], XYZ[:,2],
+                  function='multiquadric', smooth=smooth)
+        ZI = rbf(XI,YI)
+
+        # copy cell to the smoothed image
+        np.copyto(
+            dst=smoothed_image_float[x_min:x_max, y_min:y_max],
+            src=ZI, where=ZI > 0
+        )
+
+        # multiply 'height' by 100 to avoid rounding errors
+    return np.round(smoothed_image_float * 100 / conversion_factor).astype(np.uint16)
+
+
+def main(image, mask, threshold=25,
+         mean_size=6, min_size=10,
+         filter_type='log_2d',
+         minimum_bead_intensity=150,
+         z_step=0.333, pixel_size=0.1625,
+         alpha=0, smooth=0,
+         plot=False):
     '''Converts an image stack with labelled cell surface to a cell
     `volume` image
 
@@ -150,16 +356,27 @@ def main(image, mask, threshold=150, bead_size=2, superpixel_size=4,
     mask: numpy.ndarray[Union[numpy.int32, numpy.bool]]
         binary or labeled image of cell segmentation (2D)
     threshold: int, optional
-        intensity of bead (default: ``150``)
-    bead_size: int, optional
-        minimal size of bead (default: ``2``)
-    superpixel_size: int, optional
-        size of superpixels for searching the 3D position of a bead
-    close_surface: bool, optional
-        whether the interpolated surface should be morphologically closed
-    close_disc_size: int, optional
-        size in pixels of the disc used to morphologically close the
-        interpolated surface
+        intensity of bead in filtered image (default: ``25``)
+    mean_size: int, optional
+        mean size of bead (default: ``6``)
+    min_size: int, optional
+        minimal number of connected voxels per bead (default: ``10``)
+    filter_type: str, optional
+        filter used to emphasise the beads in 3D
+        (options: ``log_2d`` (default) or ``log_3d``)
+    minimum_bead_intensity: int, optional
+        minimum intensity in the original image of an identified bead
+        centre. Use to filter low intensity beads.
+    z_step: float, optional
+        distance between consecutive z-planes (um) (default: ``0.333``)
+    pixel_size: float, optional
+        size of pixel (um) (default: ``0.1625``)
+    alpha: float, optional
+        value of parameter for 3D alpha shape calculation
+        (default: ``0``, no vertex filtering performed)
+    smooth: float, optional
+        value of parameter for smoothing for smoothed_surface_image
+        (default: ``0``, no smoothed surface image generated)
     plot: bool, optional
         whether a plot should be generated (default: ``False``)
 
@@ -168,87 +385,172 @@ def main(image, mask, threshold=150, bead_size=2, superpixel_size=4,
     jtmodules.generate_volume_image.Output
     '''
 
-    n_slices = image.shape[-1]
-    logger.debug('input image has size %d in last dimension', n_slices)
+    # Check that there are cells identified in image
+    if (np.max(mask) > 0):
+        volume_image_calculated = True
 
-    logger.debug('mask beads inside cell')
-    beads_outside_cell = np.copy(image)
-    for iz in range(n_slices):
-        beads_outside_cell[mask > 0, iz] = 0
+        n_slices = image.shape[-1]
+        logger.debug('input image has z-dimension %d', n_slices)
 
-    logger.debug('search for 3D position of beads outside cell')
-    slide = np.argmax(beads_outside_cell, axis=2)
-    slide[slide > np.percentile(slide[mask == 0], 20)] = 0
+        # Remove high intensity pixels
+        detect_image = image.copy()
+        p = np.percentile(detect_image, 99.9)
+        detect_image[detect_image > p] = p
 
-    logger.debug('determine surface of slide')
-    slide_coordinates = array_to_coordinate_list(slide)
-    bottom_surface = fit_plane(subsample_coordinate_list(
-        slide_coordinates, 2000)
-    )
+        # Perform LoG filtering in 3D to emphasise beads
+        if filter_type == 'log_2d':
+            logger.info('using stacked 2D LoG filter to detect beads')
+            f = -1 * log_2d(size=mean_size, sigma=float(mean_size - 1) / 3)
+            filt = np.stack([f for _ in range(mean_size)], axis=2)
 
-    logger.debug('detect_beads in 2D')
-    mip = np.max(image, axis=-1)
-    try:
-        # TODO: use LOG filter???
-        beads, beads_centroids = detect_blobs(
-            image=mip, mask=np.invert(mask > 0), threshold=threshold,
-            min_area=bead_size
+        elif filter_type == 'log_3d':
+            logger.info('using 3D LoG filter to detect beads')
+            filt = -1 * log_3d(mean_size, (float(mean_size - 1) / 3,
+                                           float(mean_size - 1) / 3,
+                                           4 * float(mean_size - 1) / 3))
+        else:
+            logger.info('using unfiltered image to detect beads')
+
+        if filter_type == 'log_2d' or filter_type == 'log_3d':
+            logger.debug('convolve image with filter kernel')
+            detect_image = mh.convolve(detect_image.astype(float), filt)
+            detect_image[detect_image < 0] = 0
+
+        logger.debug('threshold beads')
+        labeled_beads, n_labels = mh.label(detect_image > threshold)
+        logger.debug('detected %d beads', n_labels)
+
+        logger.debug('remove small beads')
+        sizes = mh.labeled.labeled_size(labeled_beads)
+        too_small = np.where(sizes < min_size)
+        labeled_beads = mh.labeled.remove_regions(labeled_beads, too_small)
+        mh.labeled.relabel(labeled_beads, inplace=True)
+        logger.info(
+            '%d beads remain after removing beads with < %d voxels',
+            np.max(labeled_beads),
+            min_size
         )
-    except:
-        logger.warn('detect_blobs failed, returning empty volume image')
-        volume_image = np.zeros(shape=mask.shape, dtype=image.dtype)
-        figure = str()
-        return Output(volume_image, figure)
 
-    n_beads = np.count_nonzero(beads_centroids)
-    logger.info('found %d beads on cells', n_beads)
-
-    if n_beads == 0:
-        logger.warn('empty volume image')
-        volume_image = np.zeros(shape=mask.shape, dtype=image.dtype)
-    else:
-        logger.debug('locate beads in 3D')
-        beads_coords_3D = locate_in_3D(
-            image=image, mask=beads_centroids,
-            bin_size=superpixel_size
+        logger.debug('localise beads in 3D')
+        localised_beads = localise_bead_maxima_3D(
+            image, labeled_beads, minimum_bead_intensity
         )
 
-        logger.info('interpolate cell surface')
+        logger.debug('mask beads inside cells')
+        # expand mask to ensure slide-beads are well away from cells
+        slide = np.copy(localised_beads.coordinate_image)
+        expand_mask = mh.dilate(
+            A=mask > 0,
+            Bc=np.ones([25,25], bool)
+        )
+        slide[expand_mask] = 0
+
+        logger.debug('determine coordinates of slide surface')
+        try:
+            bottom_surface = slide_surface_params(slide)
+        except InvalidSlideError:
+            logger.error('slide surface calculation is invalid' +
+                         ' returning empty volume image')
+            volume_image = np.zeros(shape=image[:,:,0].shape,
+                                    dtype=image.dtype)
+            figure = str()
+            return Output(volume_image, volume_image, volume_image, volume_image, figure)
+
+        logger.debug('subtract slide surface to get absolute bead coordinates')
+        bead_coords_abs = []
+        for i in range(len(localised_beads.coordinates)):
+            bead_height = (
+                localised_beads.coordinates[i][2] -
+                plane(localised_beads.coordinates[i][0],
+                      localised_beads.coordinates[i][1],
+                      bottom_surface.x)
+            )
+            if bead_height > 0:
+                bead_coords_abs.append(
+                    (localised_beads.coordinates[i][0],
+                     localised_beads.coordinates[i][1],
+                     bead_height)
+                )
+
+        logger.debug('convert absolute bead coordinates to image')
+        coord_image_abs = coordinate_list_to_array(
+            bead_coords_abs, shape=image[:,:,0].shape, dtype=np.float32
+        )
+
+        filtered_coords_global = filter_vertices_per_cell_alpha_shape(
+            coord_image_abs=coord_image_abs,
+            mask=mask,
+            alpha=alpha,
+            z_step=z_step,
+            pixel_size=pixel_size
+        )
+
+        logger.info('linear interpolation of cell surface')
         volume_image = interpolate_surface(
-            coords=beads_coords_3D,
-            output_shape=np.shape(image[:, :, 1]),
+            coords=np.asarray(filtered_coords_global, dtype=np.uint16),
+            output_shape=image[:,:,0].shape,
             method='linear'
         )
 
-        volume_image = volume_image.astype(image.dtype)
+        volume_image = (100.0 * volume_image).astype(image.dtype)
 
-        if (close_surface is True):
-            import mahotas as mh
-            logger.info('morphological closing of cell surface')
-            volume_image = mh.close(volume_image,
-                                    Bc=mh.disk(close_disc_size))
+        logger.debug('set regions outside mask to zero')
         volume_image[mask == 0] = 0
 
-    if plot:
-        logger.debug('convert bottom surface plane to image for plotting')
-        bottom_surface_image = np.zeros(slide.shape, dtype=np.uint8)
+        if smooth > 0:
+            logger.info('smoothing cell surface with parameter %0.4f', smooth)
+            filtered_coordinate_image = coordinate_list_to_array(
+                coordinates=np.array(filtered_coords_global, dtype=np.uint16),
+                shape=image[:,:,0].shape)
+            smoothed_surface_image = smooth_surface(
+                coordinate_image=filtered_coordinate_image,
+                mask=mask,
+                output_shape=np.shape(image[:,:,0]),
+                z_step=z_step,
+                pixel_size=pixel_size,
+                smooth=smooth
+            )
+        else:
+            logger.info('omitting cell surface smoothing')
+            smoothed_surface_image = np.zeros(
+                shape=image[:,:,0].shape, dtype=image.dtype
+            )
+
+        logger.debug('convert bottom surface plane to image')
+        dt = np.dtype(float)
+        bottom_surface_image = np.zeros(slide.shape, dtype=dt)
         for ix in range(slide.shape[0]):
             for iy in range(slide.shape[1]):
                 bottom_surface_image[ix, iy] = plane(
                     ix, iy, bottom_surface.x)
 
+    else:
+        logger.warn(
+            'no objects in input mask, skipping cell volume calculation.'
+        )
+        volume_image_calculated = False
+        volume_image = np.zeros(shape=image[:,:,0].shape, dtype=image.dtype)
+        smoothed_surface_image = volume_image
+        bottom_surface_image = volume_image
+        localised_beads = Beads([],volume_image)
+
+    if (plot and volume_image_calculated):
         logger.info('create plot')
         from jtlib import plotting
         plots = [
             plotting.create_intensity_image_plot(
-                mip, 'ul', clip=True
+                np.max(image, axis=-1), 'ul', clip=True
             ),
-            plotting.create_intensity_image_plot(
+            plotting.create_float_image_plot(
                 bottom_surface_image, 'll', clip=True
             ),
             plotting.create_intensity_image_plot(
                 volume_image, 'ur', clip=True
+            ),
+            plotting.create_intensity_image_plot(
+                smoothed_surface_image, 'lr', clip=True
             )
+
         ]
         figure = plotting.create_figure(
             plots, title='Convert stack to volume image'
@@ -256,4 +558,12 @@ def main(image, mask, threshold=150, bead_size=2, superpixel_size=4,
     else:
         figure = str()
 
-    return Output(volume_image, figure)
+    if (volume_image_calculated):
+        bottom_surface_image[bottom_surface_image < 0] = 0
+        bottom_surface_image = np.floor(bottom_surface_image).astype(np.uint16)
+
+    return Output(volume_image,
+                  smoothed_surface_image,
+                  localised_beads.coordinate_image.astype(np.uint16),
+                  bottom_surface_image,
+                  figure)

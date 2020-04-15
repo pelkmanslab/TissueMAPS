@@ -1,5 +1,5 @@
 ---
-version: 0.0.4
+version: 0.0.6
 
 input:
 
@@ -36,6 +36,11 @@ input:
       value: 0.25
       help: >
         Distance between consecutive z-planes (micrometres).
+
+    - name: surface_area
+      type: Boolean
+      value: false
+      help: Should surface area be extracted?
 
     - name: plot
       type: Plot

@@ -1,5 +1,5 @@
 ---
-version: 0.1.0
+version: 0.5.0
 
 input:
 
@@ -13,37 +13,66 @@ input:
     type: LabelImage
     key:
     help: >
-      Binary or labeled image of cell segmentation (2D).
+      Labeled image of cell segmentation (2D).
 
   - name: threshold
     type: Numeric
-    value: 150
+    value: 30
     help: >
-      Threshold for detection of bead intensity.
+      Threshold for detection of bead intensity (after filtering).
 
-  - name: bead_size
+  - name: mean_size
     type: Numeric
-    value: 2
+    value: 6
     help: >
-      Bead size in pixels (passed to detect_blobs)
+      Bead size in pixels, specifies the width of the filter kernel.
 
-  - name: superpixel_size
+  - name: min_size
     type: Numeric
-    value: 4
+    value: 10
     help: >
-      Size of superpixels for searching the 3D position of a bead.
+      Minimal number of connected voxels per bead.
 
-  - name: close_surface
-    type: Boolean
-    value: false
-    help: >
-      Whether the interpolated surface should be morphologically closed.
+  - name: filter_type
+    type: Character
+    value: log_2d
+    options:
+      - log_2d
+      - log_3d
+    help: Filter to be applied to emphasise beads for detection.
 
-  - name: close_disc_size
+  - name: minimum_bead_intensity
     type: Numeric
-    value: 8
+    value: 140
     help: >
-      Size in pixels of the disc used to morphologically close the interpolated surface
+      Threshold for identified bead maxima, beads with maximal
+      intensity below this value will be discarded.
+
+  - name: pixel_size
+    type: Scalar
+    value: 0.1625
+    help: >
+      x-y dimension of pixel (micrometres).
+
+  - name: z_step
+    type: Scalar
+    value: 0.333
+    help: >
+      Distance between consecutive z-planes (micrometres).
+
+  - name: alpha
+    type: Numeric
+    value: 0
+    help: >
+      value of parameter for 3D alpha shape calculation
+        (default: 0, no vertex filtering performed)
+
+  - name: smooth
+    type: Numeric
+    value: 0
+    help: >
+      value of parameter for surface smoothing
+        (default: 0, no smoothed surface image generated)
 
   - name: plot
     type: Plot
@@ -56,12 +85,31 @@ output:
     type: IntensityImage
     key: generate_volume_image.volume_image
     help: >
-      Image in which intensity represents the height (in z-slices)
-      above the surface of the slide each point is.
+      Intensity image in which pixel values represent the surface
+      height (in z-slices) above the slide (multiplied by 100).
+
+  - name: smoothed_surface_image
+    type: IntensityImage
+    key: generate_volume_image.smoothed_surface_image
+    help: >
+      The same as the volume image, except smoothed for surface area
+      calculations.
+
+  - name: bead_coordinate_image
+    type: IntensityImage
+    key: generate_volume_image.bead_coordinate_image
+    help: >
+      Absolute coordinates for all detected beads (before vertex filtering)
+
+  - name: slide_surface_image
+    type: IntensityImage
+    key: generate_volume_image.slide_surface_image
+    help: >
+      Intensity image representing the inferred slide surface
 
   - name: figure
     type: Figure
     help: >
-      "Maximum intensity projection" of beads and computed "slide
-      surface". Also shows final volume image"
+      "Maximum intensity projection" of beads, computed "slide
+      surface", volume and smoothed surface images"
 
