@@ -13,6 +13,7 @@
 # limitations under the License.
 '''Jterator module for measuring intensity statistics.'''
 import collections
+import numpy as np
 
 VERSION = '0.1.0'
 
@@ -40,4 +41,4 @@ def main(input_image, plot=False):
     -------
     jtmodules.label.Output[Union[numpy.ndarray, str]]
     '''
-    return Output(input_image)
+    return Output(input_image.astype(np.int32))
