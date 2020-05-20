@@ -116,6 +116,7 @@ SQLAlchemy==1.1.9
 SQLAlchemy-Utils==0.32.14
 subprocess32==3.2.7
 tables==3.4.2
+tmclient==0.3.3
 tox==2.7.0
 traitlets==4.3.2
 typing==3.7.4.1
