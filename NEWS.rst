@@ -31,6 +31,35 @@
 .. contents::
 
 
+v0.6.1
+======
+
+Minor features added; some fixes in the deployment regarding python and JS software dependencies.
+
+New features
+------------
+
+* Make fill module inputs more permissive, by Scott Berry @scottberry (`PR #5 on pelkmanslab/TissueMAPS`_)
+* Updates to input of threshold manual, by Scott Berry @scottberry (`PR #9 on pelkmanslab/TissueMAPS`_)
+* Improve SVC UI: Make button clickable in correct states, by Joel Lüthi @jluethi (`PR #10 on pelkmanslab/TissueMAPS`_)
+
+Deployment changes
+------------------
+
+* Add missing or update Python packages required by the test script (`PR #11 on pelkmanslab/TissueMAPS`_)
+* Move frontend packages installation from npm+bower to npm+yarn(+bower): a
+  package was missing because a developer deleted their github account; now
+  use `npm i --no-package-lock "bower@1.8.8" "yarn@^1.22.4"` followed by
+  `PATH="node_modules/.bin/:$PATH" yarn` (`PR #12 on pelkmanslab/TissueMAPS`_,
+  see also commit `fe6c764`_)
+
+.. _`PR #5 on pelkmanslab/TissueMAPS`:  https://github.com/pelkmanslab/TissueMAPS/pull/5
+.. _`PR #9 on pelkmanslab/TissueMAPS`:  https://github.com/pelkmanslab/TissueMAPS/pull/9
+.. _`PR #10 on pelkmanslab/TissueMAPS`: https://github.com/pelkmanslab/TissueMAPS/pull/10
+.. _`PR #11 on pelkmanslab/TissueMAPS`: https://github.com/pelkmanslab/TissueMAPS/pull/11
+.. _`PR #12 on pelkmanslab/TissueMAPS`: https://github.com/pelkmanslab/TissueMAPS/pull/12
+.. _`fe6c764`: https://github.com/pelkmanslab/TissueMAPS/commit/fe6c764c25e6bad56b3adee15d6aa8aa156344ef
+
 v0.6.0
 ======
 
@@ -45,8 +74,8 @@ hasn't been updated since TM v0.3.3 (October 2017), similarly to the
 New features
 ------------
 
-* Add experiment list ordering capability, by Joel Luehti (`PR #2 on pelkmanslab/TissueMAPS`_)
-* Save training labels of classifiers, by Joel Luehti (`PR #4 on pelkmanslab/TissueMAPS`_)
+* Add experiment list ordering capability, by Joel Lüthi @jluethi (`PR #2 on pelkmanslab/TissueMAPS`_)
+* Save training labels of classifiers, by Joel Lüthi @jluethi (`PR #4 on pelkmanslab/TissueMAPS`_)
 
 .. _`PR #2 on pelkmanslab/TissueMAPS`: https://github.com/pelkmanslab/TissueMAPS/pull/2
 .. _`PR #4 on pelkmanslab/TissueMAPS`: https://github.com/pelkmanslab/TissueMAPS/pull/4
