@@ -74,7 +74,7 @@ def main(mask, feature, lower_threshold=None, upper_threshold=None, plot=False):
 
     name = 'Morphology_{0}'.format(feature.capitalize())
 
-    # Only label image is it's a mask, avoid threshold based relabeling 
+    # Only label image if it's a mask, avoid threshold based relabeling 
     # for label images
     if len(np.unique(mask)) < 3:
         labeled_image = mh.label(mask > 0)[0]
