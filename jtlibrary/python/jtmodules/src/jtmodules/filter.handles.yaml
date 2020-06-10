@@ -41,10 +41,10 @@ input:
 
 output:
 
-    - name: filtered_mask
-      type: MaskImage
-      key: filter.filtered_mask
-      help: Filtered mask image.
+    - name: filtered_label_image
+      type: LabelImage
+      key: filter.filtered_label_image
+      help: Filtered image.
 
     - name: figure
       type: Figure

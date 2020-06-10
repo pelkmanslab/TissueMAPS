@@ -46,7 +46,7 @@ class AlignBatchArguments(BatchArguments):
     )
 
     robust_align = Argument(
-        type=bool, default=False, short_flag='r',
+        type=bool, default=True, short_flag='r',
         help='''whether pixel intensities are clipped to the specified percentile 
              to avoid artefacts (dirt may be small but have a high intensity. 
              Clipping its value stops it from distorting the alignment)'''
