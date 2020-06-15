@@ -96,15 +96,19 @@
     jquery "^1.11.1"
     moment "^2.5.0"
 
-"@bower_components/angular@angular/bower-angular#>=1.0.0 <=1.5.8":
-  version "1.5.8"
-  resolved "https://codeload.github.com/angular/bower-angular/tar.gz/7e0e546eb6caedbb298c91a9f6bf7de7eeaa4ad2"
+"@bower_components/angular@angular/bower-angular#1.5.11":
+  version "1.5.11"
+  resolved "https://codeload.github.com/angular/bower-angular/tar.gz/0f57428c3ffe2f486264ab7fbee3968dccc7b720"
 
 "@bower_components/checklist-model@vitalets/checklist-model#~0.9.0":
   version "0.9.0"
   resolved "https://codeload.github.com/vitalets/checklist-model/tar.gz/990450e20f72b5ecdf8e79d19bb1d26d84e4086e"
   dependencies:
     angular ">=1.0.8"
+
+"@bower_components/fontawesome@FortAwesome/Font-Awesome#~4.6.3":
+  version "4.6.3"
+  resolved "https://codeload.github.com/FortAwesome/Font-Awesome/tar.gz/8e241f209faa1dd2182c9fdc9c352d8806504a4e"
 
 "@bower_components/highlightjs@components/highlightjs#~9.3.0":
   version "9.3.0"
@@ -2554,11 +2558,6 @@ font-measure@^1.2.2:
   integrity sha512-mRLEpdrWzKe9hbfaF3Qpr06TAjquuBVP5cHy4b3hyeNdjc9i0PO6HniGsX5vjL5OWv7+Bd++NiooNpT/s8BvIA==
   dependencies:
     css-font "^1.2.0"
-
-fontawesome@^4.6.3:
-  version "4.7.2"
-  resolved "https://registry.yarnpkg.com/fontawesome/-/fontawesome-4.7.2.tgz#7f0c72ac7a6b029d3375bacb23522d9acfc50a52"
-  integrity sha1-fwxyrHprAp0zdbrLI1Itms/FClI=
 
 for-each@~0.3.3:
   version "0.3.3"
