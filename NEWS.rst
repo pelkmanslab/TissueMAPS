@@ -31,6 +31,25 @@
 .. contents::
 
 
+v0.6.2
+======
+
+Minor features added; some fixes in the deployment regarding JS software dependencies.
+
+New features
+------------
+
+* Small module fixes & default adjustments, by Joel Lüthi @jluethi (`PR #13 on pelkmanslab/TissueMAPS`_)
+
+Deployment changes
+------------------
+
+* Fix FontAwesome deployment (see commit `716f410`_)
+
+.. _`PR #13 on pelkmanslab/TissueMAPS`: https://github.com/pelkmanslab/TissueMAPS/pull/13
+.. _`716f410`: https://github.com/pelkmanslab/TissueMAPS/commit/716f410d77ea8eba2590558a4cf8181ff6a63af7
+
+
 v0.6.1
 ======
 
@@ -59,6 +78,7 @@ Deployment changes
 .. _`PR #11 on pelkmanslab/TissueMAPS`: https://github.com/pelkmanslab/TissueMAPS/pull/11
 .. _`PR #12 on pelkmanslab/TissueMAPS`: https://github.com/pelkmanslab/TissueMAPS/pull/12
 .. _`fe6c764`: https://github.com/pelkmanslab/TissueMAPS/commit/fe6c764c25e6bad56b3adee15d6aa8aa156344ef
+
 
 v0.6.0
 ======
