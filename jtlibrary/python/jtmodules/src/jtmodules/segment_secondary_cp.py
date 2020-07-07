@@ -91,7 +91,7 @@ def filter_labels(primary_label_image, secondary_label_image):
     extra_labels = set(labels_out) - set(labels_in)
     missing_labels = set(labels_in) - set(labels_out)
 
-    if len(extra_labels) != 0:
+    if extra_labels:
         logger.warn(
             'Removing labels {} detected in secondary_label_image, which'
             'are not present in primary_label_image'.format(extra_labels))
