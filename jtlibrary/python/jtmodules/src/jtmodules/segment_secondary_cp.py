@@ -304,7 +304,7 @@ def main(primary_label_image, intensity_image, method, threshold,
     borders_with_background = np.zeros(primary_label_image.shape, dtype=np.int32)
 
     for i in range(1,np.max(secondary_label_image)):
-      borders_with_background = borders_with_background + mh.labeled.border(labeled=secondary_label_image,i=i,j=0)
+      borders_with_background += mh.labeled.border(labeled=secondary_label_image, i=i, j=0)
 
     all_borders = mh.labeled.borders(secondary_label_image)
     touching_pixels = np.logical_xor(borders_with_background,all_borders)
