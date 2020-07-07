@@ -311,7 +311,7 @@ def main(primary_label_image, intensity_image, method, threshold,
     secondary_label_image[touching_pixels!=0] = 0
 
     n_objects = len(np.unique(secondary_label_image)[1:])
-    logger.info('identified %d objects', n_objects)
+    logger.info('identified {} objects'.format(n_objects))
 
     if plot:
         from jtlib import plotting
