@@ -216,8 +216,7 @@ def main(primary_label_image, intensity_image, method, threshold,
     else:
         n_objects = len(np.unique(primary_label_image[1:]))
         logger.info(
-            'primary label image has %d objects',
-            n_objects - 1
+            'primary label image has {} objects'.format(n_objects - 1)
         )
         if n_objects > 1:
 
