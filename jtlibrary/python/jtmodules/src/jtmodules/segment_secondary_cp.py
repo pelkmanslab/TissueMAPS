@@ -308,7 +308,7 @@ def main(primary_label_image, intensity_image, method, threshold,
 
     all_borders = mh.labeled.borders(secondary_label_image)
     touching_pixels = np.logical_xor(borders_with_background,all_borders)
-    secondary_label_image[touching_pixels!=0] = 0
+    secondary_label_image[touching_pixels != 0] = 0
 
     n_objects = len(np.unique(secondary_label_image)[1:])
     logger.info('identified {} objects'.format(n_objects))
