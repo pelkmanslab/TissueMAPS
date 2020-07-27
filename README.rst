@@ -86,6 +86,11 @@ Or using the ``tmclient`` Python package:
 License
 =======
 
+SPDX-License-Identifier: Apache-2.0 OR BSD-3-Clause
+
 Client code is licensed under `Apache 2.0 <https://www.apache.org/licenses/LICENSE-2.0.html>`_ and server code under `GNU Affero General Public License 3.0 <https://www.gnu.org/licenses/agpl-3.0.html>`_.
+
+The following files have separate Licenses, indicated in the file header:
+- `BSD 3-Clause`: `TissueMAPS/jtlibrary/python/jtmodules/src/jtmodules/segment_secondary_cp.py <https://github.com/pelkmanslab/TissueMAPS/blob/master/jtlibrary/python/jtmodules/src/jtmodules/segment_secondary_cp.py>`_
 
 For more information please refer to the `license section <http://docs.tissuemaps.org/license.html>`_ of the online documentation or the ``LICENSE.txt`` files in the individual Github repositories.
