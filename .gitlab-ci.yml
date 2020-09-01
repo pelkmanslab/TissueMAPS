@@ -1,0 +1,9 @@
+shell-test:
+  type: tests
+  script:
+    # First delete the previous test experiment with an empty name
+    - psql -U test01 tissuemaps -c "delete from experiment_references where name = '';"
+    - cd /srv/tissuemaps/$(hostname)/src/tests
+    - . /srv/tissuemaps/$(hostname)/bin/env.sh
+    - . /srv/tissuemaps/$(hostname)/bin/activate
+    - TMTEST_DATA_DIR=/data/active/jluethi/tissuemaps_test_data/v0.6.2/SyntheticData_2D_Canonical/ tox
