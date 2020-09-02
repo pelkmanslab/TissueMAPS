@@ -2,6 +2,10 @@
 TissueMAPS
 **********
 
+.. image:: https://gitlab.com/pelkmanslab/TissueMAPS/badges/master/pipeline.svg
+   :alt: pipeline status
+   :target: https://gitlab.com/pelkmanslab/TissueMAPS/-/commits/master
+
 *TissueMAPS* is a software framework for distributed analysis and interactive visualization of large-scale, high-dimensional microscopy image datasets.
 
 Online documentation is available at `docs.tissuemaps.org <http://docs.tissuemaps.org/>`_.
