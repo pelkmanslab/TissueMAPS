@@ -2,7 +2,7 @@ shell-test:
   type: test
   script:
     # First delete the previous test experiment with an empty name
-    - psql -U test01 tissuemaps -c "delete from experiment_references where name = '';"
+    - psql -h localhost -U test01 tissuemaps -c "delete from experiment_references where name = '';"
     - cd /srv/tissuemaps/$(hostname)/src/tests
     - . /srv/tissuemaps/$(hostname)/bin/env.sh
     - . /srv/tissuemaps/$(hostname)/bin/activate
