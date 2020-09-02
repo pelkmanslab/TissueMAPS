@@ -1,4 +1,4 @@
-shell-test:
+test:
   type: tests
   script:
     # First delete the previous test experiment with an empty name
