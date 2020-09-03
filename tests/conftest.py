@@ -363,20 +363,23 @@ def root_dir():
 
 @pytest.fixture(scope='session')
 def client(root_dir, experiment_info):
+    # Here define the correct credentials of the TM server you want to use.
     host = 'localhost'
-    port = 8002
-    username = 'devuser'
-    password = '123456'
+    port = 80
+    username = 'tm-user-here'
+    password = 'tm-password-in-plaintext-here'
 
-    _docker_up(root_dir)
-    try:
-        client = TmClient(host, port, username, password, experiment_info.name)
-        yield client
-    except requests.ConnectionError:
-        _docker_down(root_dir)
-        raise OSError(
-            'Client could not connect to host "{0}" on port {1}.'.format(
-                host, port
-            )
-        )
-    _docker_down(root_dir)
+    #_docker_up(root_dir)
+    #try:
+    #    client = TmClient(host, port, username, password, experiment_info.name)
+    #    yield client
+    #except requests.ConnectionError:
+    #    _docker_down(root_dir)
+    #    raise OSError(
+    #        'Client could not connect to host "{0}" on port {1}.'.format(
+    #            host, port
+    #        )
+    #    )
+    #_docker_down(root_dir)
+
+    yield TmClient(host, port, username, password, experiment_info.name)

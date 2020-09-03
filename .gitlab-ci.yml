@@ -1,4 +1,4 @@
-shell-test:
+synthetic-data:
   type: test
   script:
     # Copy TM account auth details from local file in home.

@@ -93,3 +93,6 @@ ENV/
 # Causes npm to delete packages installed by yarn, because it syncs packages
 # in node_modules with those installed by npm and saved in package-lock.json.
 tmui/src/package-lock.json
+
+# Created by tox when testing code.
+builds/
