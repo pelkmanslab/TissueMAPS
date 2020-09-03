@@ -1,11 +1,21 @@
 synthetic-data:
   type: test
   script:
-    # Copy TM account auth details from local file in home.
-    - cp ~/conftest.py tests/conftest.py
     # First delete the previous test experiment, which has an empty name.
     - psql -h localhost -U test01 tissuemaps -c "delete from experiment_references where name = '';"
+
+    # Update the TM code to the latest version.
+    - cd /srv/tissuemaps/$(hostname)/src/
+    - sudo -u test01 git pull
+
+    # Restart all TM processes involved, so that changes are picked up.
+    - sudo supervisorctl restart all
+
+    # Copy TM account auth details from local file in home.
     - cd /srv/tissuemaps/$(hostname)/src/tests
+    - sudo -u test01 cp /home/gitlab-runner/conftest.py conftest.py
+
+    # Finally run the actual tests.
     - . /srv/tissuemaps/$(hostname)/bin/env.sh
     - . /srv/tissuemaps/$(hostname)/bin/activate
     - TMTEST_DATA_DIR=/net/nfs4/pelkmanslab-fileserver-common/data/share/tmaps-testdata/v0.6.x/SyntheticTestCase_alternative_results/ tox
