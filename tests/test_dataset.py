@@ -193,8 +193,11 @@ def test_feature_values(client, experiment_info):
                 expected.shape[1]
             )
         )
+        # Remove mapobject_id column from the dataframes
+        response_values = response.values[:,1:]
+        expected_values = expected.values[:,1:]
         assert_array_almost_equal(
-            response.values, expected.values,
+            response_df, expected_df.values,
             err_msg='Feature values for object type "{0}" are incorrect.'.format(
                 mapobject_type['name']
             )
@@ -229,6 +232,9 @@ def test_metadata(client, experiment_info):
 
         response_numeric = response.loc[:, ~is_object]
         expected_numeric = expected.loc[:, ~is_object]
+        # Remove mapobject_id column from the dataframes
+        del response_numeric['mapobject_id']
+        del expected_numeric['mapobject_id']
         assert np.allclose(expected_numeric, response_numeric,equal_nan=True), (
             'Metadata for object type "{0}" are incorrect. '
             'Some numeric values are wrong'.format(mapobject_type['name'])
