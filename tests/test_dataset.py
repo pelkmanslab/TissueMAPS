@@ -118,11 +118,14 @@ def test_query_workflow_status(client, experiment_info):
             raise AssertionError('Workflow failed.')
         else:
             time.sleep(10)
+
         passed = time.time() - start
-        if passed > 30 and response['state'] == 'NEW':
+        passed_thr = 60
+
+        if passed > passed_thr and response['state'] == 'NEW':
             raise AssertionError('Workflow submission failed.')
         elif passed > experiment_info.settings.workflow_timeout:
-            raise AssertionError('Workflow didn\'t terminate in time.')
+            raise AssertionError("Workflow didn't terminate in time.")
 
 
 def test_mapobject_type_count(client, experiment_info):
