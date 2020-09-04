@@ -2,11 +2,7 @@
 TissueMAPS
 **********
 
-Status of the testing pipeline: |pipeline|
-If the badge appears as status "unknown" is because the pipeline started
-before the git mirror was updated, which means that GitLab believes the
-pipeline ran for the previous commit and not the new one. Click on the badge
-to check the status of the last pipeline.
+Status of the testing pipeline: |pipeline| (click for complete pipeline history)
 
 .. |pipeline| image:: https://gitlab.com/pelkmanslab/TissueMAPS/badges/master/pipeline.svg
    :alt: pipeline status
