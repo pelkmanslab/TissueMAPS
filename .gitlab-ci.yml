@@ -6,14 +6,14 @@ synthetic-data:
 
     # Update the TM code to the latest version.
     - cd /srv/tissuemaps/$(hostname)/src/
-    - sudo -u test01 git pull
+    - sudo -u $(hostname |cut -d'-' -f4) git pull
 
     # Restart all TM processes involved, so that changes are picked up.
     - sudo supervisorctl restart all
 
     # Copy TM account auth details from local file in home.
     - cd /srv/tissuemaps/$(hostname)/src/tests
-    - sudo -u test01 cp /home/gitlab-runner/conftest.py conftest.py
+    - sudo -u $(hostname |cut -d'-' -f4) cp /home/gitlab-runner/conftest.py conftest.py
 
     # Finally run the actual tests.
     - . /srv/tissuemaps/$(hostname)/bin/env.sh
