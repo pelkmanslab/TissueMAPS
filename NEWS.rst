@@ -31,6 +31,23 @@
 .. contents::
 
 
+v0.6.3
+======
+
+Add CellProfiler segmentation and include alpha_shape code.
+Add ``.gitlab-ci.yml`` to perform tests on GitLab CI at each commit.
+
+New features
+------------
+
+* Copy local changes to volume image calculations and measurement, by Scott Berry @scottberry (`PR #6 on pelkmanslab/TissueMAPS`_)
+* CellProfiler segmentation modules, by Scott Berry @scottberry (`PR #7 on pelkmanslab/TissueMAPS`_)
+* Add separate license for CellProfiler code, licensed as BSD 3-Clause
+
+.. _`PR #6 on pelkmanslab/TissueMAPS`: https://github.com/pelkmanslab/TissueMAPS/pull/6
+.. _`PR #7 on pelkmanslab/TissueMAPS`: https://github.com/pelkmanslab/TissueMAPS/pull/7
+
+
 v0.6.2
 ======
 
