@@ -16,6 +16,8 @@ import collections
 import logging
 import numpy as np
 import mahotas as mh
+import alpha_shape
+import random
 from jtlib.filter import log_2d, log_3d
 
 logger = logging.getLogger(__name__)
@@ -33,6 +35,12 @@ class InvalidSlideError(ValueError):
     set of points'''
 
 
+def z_steps_to_abs(z):
+    return float(conversion_factor * z)
+
+def abs_to_z_steps(z):
+    return int(round(z / conversion_factor))
+
 def array_to_coordinate_list(array, offset=[0,0]):
     '''Convert a 2D array representation of points in 3D
     to a list of x,y,z coordinates'''
@@ -48,8 +56,8 @@ def coordinate_list_to_array(coordinates, shape, dtype=np.uint16):
     '''Convert a list of x,y,z coordinates to a 2D array
     representation of points in 3D'''
     image = np.zeros(shape, dtype=dtype)
-    for i in range(len(coordinates)):
-        image[coordinates[i][0], coordinates[i][1]] = coordinates[i][2]
+    for x, y, z in coordinates:
+        image[x, y] = z
     return image.astype(dtype=dtype)
 
 
@@ -186,7 +194,7 @@ def localise_bead_maxima_3D(image, labeled_beads, minimum_bead_intensity):
         bbox_min = (x_min, y_min, z_min)
         centre = tuple(a + b for a, b in zip(bbox_min, local_coords))
 
-        if (image[centre[0], centre[1], centre[2]] > minimum_bead_intensity):
+        if image[centre] > minimum_bead_intensity:
             bead_coords.append(centre)
 
     logger.debug('convert %d bead vertices to image', len(bead_coords))
@@ -198,8 +206,6 @@ def localise_bead_maxima_3D(image, labeled_beads, minimum_bead_intensity):
 def filter_vertices_per_cell_alpha_shape(coord_image_abs, mask, alpha, z_step, pixel_size):
     '''Vertices are filtered based on whether their coordinates form a
     likely part of a cell. This step is for rejection of spatial outliers'''
-    import alpha_shape
-    import random
 
     logger.debug('filtering vertices with alpha = %d,' +
                  ' z_step = %0.4f, pixel_size = %0.4f',
@@ -207,12 +213,6 @@ def filter_vertices_per_cell_alpha_shape(coord_image_abs, mask, alpha, z_step, p
     n_cells = np.max(mask)
     bboxes = mh.labeled.bbox(mask)
     conversion_factor = 2.0 * z_step / pixel_size
-
-    def z_steps_to_abs(z):
-        return float(conversion_factor * z)
-
-    def abs_to_z_steps(z):
-        return int(round(z / conversion_factor))
 
     filtered_coords_global = []
     if alpha > 0:
@@ -286,12 +286,6 @@ def smooth_surface(coordinate_image, mask,
     bboxes = mh.labeled.bbox(mask)
     conversion_factor = z_step / pixel_size
     smoothed_image_float = np.zeros(shape=output_shape, dtype=np.float32)
-
-    def z_steps_to_abs(z):
-        return float(conversion_factor * z)
-
-    def abs_to_z_steps(z):
-        return int(round(z / conversion_factor))
 
     for cell in range(1, n_cells + 1):
         x_min, x_max, y_min, y_max = bboxes[cell]
@@ -401,7 +395,7 @@ def main(image, mask, threshold=25,
         if filter_type == 'log_2d':
             logger.info('using stacked 2D LoG filter to detect beads')
             f = -1 * log_2d(size=mean_size, sigma=float(mean_size - 1) / 3)
-            filt = np.stack([f for _ in range(mean_size)], axis=2)
+            filt = np.stack([f] * len(mean_size), axis=2)
 
         elif filter_type == 'log_3d':
             logger.info('using 3D LoG filter to detect beads')
@@ -458,19 +452,11 @@ def main(image, mask, threshold=25,
 
         logger.debug('subtract slide surface to get absolute bead coordinates')
         bead_coords_abs = []
-        for i in range(len(localised_beads.coordinates)):
-            bead_height = (
-                localised_beads.coordinates[i][2] -
-                plane(localised_beads.coordinates[i][0],
-                      localised_beads.coordinates[i][1],
-                      bottom_surface.x)
-            )
+
+        for x, y, z in localised_beads.coordinates:
+            bead_height = (z - plane(x, y, bottom_surface.x))
             if bead_height > 0:
-                bead_coords_abs.append(
-                    (localised_beads.coordinates[i][0],
-                     localised_beads.coordinates[i][1],
-                     bead_height)
-                )
+                bead_coords_abs.append((x, y, bead_height))
 
         logger.debug('convert absolute bead coordinates to image')
         coord_image_abs = coordinate_list_to_array(
