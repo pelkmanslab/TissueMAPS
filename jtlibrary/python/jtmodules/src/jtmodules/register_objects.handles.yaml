@@ -1,5 +1,5 @@
 ---
-version: 0.1.0
+version: 0.2.0
 
 input:
 
@@ -10,6 +10,11 @@ input:
         Binary or labeled mask image containing the objects
         (connected pixel components) that should be registered.
 
+    - name: relabel
+      type: Boolean
+      value: false
+      help: >
+        Should objects be relabeled on registration.
 output:
 
     - name: objects
